@@ -1,0 +1,102 @@
+import pandas as pd
+import yfinance as yf
+from strategy import select_tickers_adaptive, decide_entry_exit_adaptive, detect_market_regime
+
+def download_data(tickers, start, end):
+    data = {}
+    for ticker in tickers:
+        df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
+        if not df.empty:
+            data[ticker] = df
+    return data
+
+def run_backtest(tickers, start, end, initial_funds=25000):
+    data = download_data(tickers, start, end)
+    all_trades = []
+    funds = initial_funds
+    total_profit = 0
+    dates = pd.date_range(start, end, freq='B')
+    
+    for i, date in enumerate(dates):
+        day_data = {}
+        for ticker, df in data.items():
+            if date.strftime('%Y-%m-%d') in df.index:
+                row = df.loc[date.strftime('%Y-%m-%d')]
+                # If multiple rows, take the first
+                if hasattr(row, 'shape') and len(row.shape) > 1 and row.shape[0] > 1:
+                    row = row.iloc[0]
+                day_data[ticker] = {
+                    'open': float(row['Open'].iloc[0]) if hasattr(row['Open'], 'iloc') else float(row['Open']),
+                    'high': float(row['High'].iloc[0]) if hasattr(row['High'], 'iloc') else float(row['High']),
+                    'low': float(row['Low'].iloc[0]) if hasattr(row['Low'], 'iloc') else float(row['Low']),
+                    'close': float(row['Close'].iloc[0]) if hasattr(row['Close'], 'iloc') else float(row['Close']),
+                    'volume': float(row['Volume'].iloc[0]) if hasattr(row['Volume'], 'iloc') else float(row['Volume']),
+                    'sector': 'Unknown',  # Optional: add sector info if available
+                }
+        if not day_data:
+            continue
+        
+        # REALISTIC DAY TRADING: Use previous day's data for selection, current day for execution
+        if i > 0:  # Need at least one previous day
+            prev_date = dates[i-1]
+            prev_day_data = {}
+            for ticker, df in data.items():
+                if prev_date.strftime('%Y-%m-%d') in df.index:
+                    prev_row = df.loc[prev_date.strftime('%Y-%m-%d')]
+                    if hasattr(prev_row, 'shape') and len(prev_row.shape) > 1 and prev_row.shape[0] > 1:
+                        prev_row = prev_row.iloc[0]
+                    prev_day_data[ticker] = {
+                        'open': float(prev_row['Open'].iloc[0]) if hasattr(prev_row['Open'], 'iloc') else float(prev_row['Open']),
+                        'high': float(prev_row['High'].iloc[0]) if hasattr(prev_row['High'], 'iloc') else float(prev_row['High']),
+                        'low': float(prev_row['Low'].iloc[0]) if hasattr(prev_row['Low'], 'iloc') else float(prev_row['Low']),
+                        'close': float(prev_row['Close'].iloc[0]) if hasattr(prev_row['Close'], 'iloc') else float(prev_row['Close']),
+                        'volume': float(prev_row['Volume'].iloc[0]) if hasattr(prev_row['Volume'], 'iloc') else float(prev_row['Volume']),
+                        'sector': 'Unknown',
+                    }
+            
+            # Detect market regime for adaptive strategy
+            market_regime = detect_market_regime(prev_day_data)
+            
+            # Select tickers based on previous day's performance
+            tickers_today = select_tickers_adaptive(prev_day_data, allowed_sectors=None, min_per_sector=1, market_regime=market_regime)
+            min_tickers = max(5, len(tickers_today))
+            
+            # DAY TRADING FIX: Use current total funds for each day (funds reset daily)
+            daily_funds = funds + total_profit  # Available funds = starting funds + accumulated profit
+            
+            for ticker in tickers_today:
+                if ticker in day_data:  # Ensure ticker is available today
+                    # Use current day's opening price for entry
+                    current_data = day_data[ticker].copy()
+                    current_data['open'] = day_data[ticker]['open']  # Buy at today's open
+                    
+                    # Simulate realistic exit: can achieve high/low/close during the day
+                    trade_plan = decide_entry_exit_adaptive(current_data, daily_funds, min_tickers, market_regime)
+                    
+                    # For day trading, we close the position at the end of the day
+                    if trade_plan.get('expected_profit') and trade_plan['expected_profit'] != 0:
+                        total_profit += trade_plan['expected_profit']
+                    
+                    trade_plan['date'] = date.strftime('%Y-%m-%d')
+                    trade_plan['ticker'] = ticker
+                    all_trades.append(trade_plan)
+    
+    return pd.DataFrame(all_trades)
+
+if __name__ == "__main__":
+    # EXPANDED STOCK UNIVERSE FOR $150/DAY TARGET: More stocks = more opportunities
+    tickers = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOG', 'AMZN', 'META', 'NFLX', 'CRM', 'ADBE', 
+               'AMD', 'ORCL', 'PYPL', 'INTC', 'QCOM', 'TXN', 'AVGO', 'CSCO']  # Added 8 more tech stocks
+    start = '2024-01-01'
+    end = '2024-12-31'
+    print(f"Running ENHANCED backtest for 1 year of data: {start} to {end}")
+    print(f"Testing {len(tickers)} stocks: {', '.join(tickers)}")
+    print("ENHANCEMENTS: Higher profit targets, more aggressive position sizing, expanded stock universe")
+    df = run_backtest(tickers, start, end)
+    print(df.head())
+    print(f"Total trades: {len(df)}")
+    print(f"Total expected profit: {df['expected_profit'].sum():.2f}")
+    
+    # Save results to CSV
+    df.to_csv('backtest_results_1year.csv', index=False)
+    print("Results saved to backtest_results_1year.csv")
