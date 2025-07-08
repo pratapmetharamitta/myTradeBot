@@ -10,21 +10,26 @@ MARKET_CLOSE = '16:00'
 
 # Custom Ticker List - Add/remove tickers as needed
 CUSTOM_TICKERS = [
-    'AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOG', 'AMZN', 'META', 'NFLX',
-    'CRM', 'ADBE', 'AMD', 'ORCL', 'PYPL', 'INTC', 'QCOM', 'TXN', 'AVGO', 'CSCO'
+    'SOXL', 'SOXS',
+    'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN',
+    'GOOGL', 'META', 'AMD', 'NFLX', 'QCOM',
+    'INTC', 'AVGO', 'ADBE', 'CRM', 'SPY',
+    'QQQ', 'COST', 'BA', 'UNH', 'V'
 ]
 
 # Position Sizing Configuration
 POSITION_SIZING = {
     'method': 'adaptive',  # Options: 'adaptive', 'equal', 'custom'
     'min_position_value': 500,   # Minimum dollar amount per position (lower for more trades)
-    'max_position_value': 4000,  # Maximum dollar amount per position (higher for bigger profits)
-    'max_positions': 18,  # Maximum number of positions per day (use all available stocks)
-    'risk_per_trade': 0.03,  # Risk 3% of portfolio per trade (more aggressive)
+    'max_position_value': 5000,  # Maximum dollar amount per position (higher for bigger profits)
+    'max_positions': 20,  # Maximum number of positions per day (use all available stocks)
+    'risk_per_trade': 0.02,  # Risk 2% of portfolio per trade (more aggressive)
 }
 
 # Custom Position Sizes (only used if method='custom')
 CUSTOM_POSITION_SIZES = {
+    'SOXL': 5000,  # Larger positions for leveraged ETFs
+    'SOXS': 5000,  # Larger positions for leveraged ETFs
     'AAPL': 2500,   # $2500 position size for AAPL
     'MSFT': 2000,   # $2000 position size for MSFT
     'NVDA': 1500,   # $1500 position size for NVDA
@@ -35,7 +40,7 @@ CUSTOM_POSITION_SIZES = {
 
 # Trading Strategy Settings
 STRATEGY_CONFIG = {
-    'profit_threshold': 0.004,  # 0.4% profit target (was too high at 3%)
+    'profit_threshold': 0.04,  # 4% profit target (was too high at 3%)
     'stop_loss_pct': 0.025,     # 2.5% stop loss
     'trailing_stop_pct': 0.02,  # 2% trailing stop
     'volume_threshold': 1000000,  # Minimum daily volume

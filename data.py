@@ -2,8 +2,10 @@
 import pandas as pd
 
 def get_mock_market_data():
-    # Further enhanced mock data: 10 tickers, with sector info
+    # Enhanced mock data with leveraged ETFs and additional tickers
     data = {
+        'SOXL': {'open': 26, 'high': 28, 'low': 25.5, 'close': 27.2, 'volume': 25000000, 'sector': 'Tech'},
+        'SOXS': {'open': 64, 'high': 66, 'low': 62, 'close': 63.5, 'volume': 20000000, 'sector': 'Tech'},
         'AAPL': {'open': 190, 'high': 210, 'low': 189, 'close': 194, 'volume': 12000000, 'sector': 'Tech'},
         'TSLA': {'open': 700, 'high': 750, 'low': 695, 'close': 715, 'volume': 9000000, 'sector': 'Auto'},
         'AMD': {'open': 110, 'high': 120, 'low': 109, 'close': 119, 'volume': 8500000, 'sector': 'Tech'},
