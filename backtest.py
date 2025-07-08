@@ -87,10 +87,16 @@ def run_backtest(tickers, start, end, initial_funds=25000):
     return pd.DataFrame(all_trades)
 
 if __name__ == "__main__":
+    import sys
+    
     # Use custom tickers from configuration
     tickers = CUSTOM_TICKERS
-    start = '2024-01-01'
-    end = '2024-12-31'
+    
+    # Get year from command line argument, default to 2024
+    year = int(sys.argv[1]) if len(sys.argv) > 1 else 2024
+    start = f'{year}-01-01'
+    end = f'{year}-12-31'
+    
     print(f"Running ENHANCED backtest for 1 year of data: {start} to {end}")
     print(f"Testing {len(tickers)} custom stocks: {', '.join(tickers)}")
     print("Using CUSTOM CONFIGURATION: Custom tickers, adaptive position sizing, configurable strategy")
@@ -99,6 +105,7 @@ if __name__ == "__main__":
     print(f"Total trades: {len(df)}")
     print(f"Total expected profit: {df['expected_profit'].sum():.2f}")
     
-    # Save results to CSV
-    df.to_csv('backtest_results_1year.csv', index=False)
-    print("Results saved to backtest_results_1year.csv")
+    # Save results to CSV with year in filename
+    filename = f'backtest_results_{year}.csv'
+    df.to_csv(filename, index=False)
+    print(f"Results saved to {filename}")
