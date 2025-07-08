@@ -5,9 +5,9 @@
 
 import os
 from datetime import datetime
-from config import FUNDS, DAILY_TARGET, BROKER, FIDELITY_CLIENT_ID, FIDELITY_CLIENT_SECRET, FIDELITY_REDIRECT_URI
+from config import FUNDS, DAILY_TARGET, BROKER, FIDELITY_CLIENT_ID, FIDELITY_CLIENT_SECRET, FIDELITY_REDIRECT_URI, CUSTOM_TICKERS, POSITION_SIZING
 from fidelity_api import FidelityAPI
-from strategy import select_tickers, decide_entry_exit
+from strategy import select_custom_tickers, decide_entry_exit, detect_market_regime
 from data import get_mock_market_data
 
 
@@ -51,23 +51,37 @@ def main():
         # --- End Fidelity OAuth2 Authentication ---
 
     market_data = get_mock_market_data()  # Replace with api.get_market_data(symbol) for live
-    # BALANCED SECTORS: Focus on stable, liquid sectors for consistent performance
-    allowed_sectors = ['Tech', 'Healthcare', 'Finance', 'Consumer']
-    # Diversification: at least 1 per sector if possible
-    tickers = select_tickers(market_data, allowed_sectors, min_per_sector=1)
+    
+    # Use custom ticker configuration
+    print(f"Using custom ticker list: {CUSTOM_TICKERS}")
+    print(f"Position sizing method: {POSITION_SIZING['method']}")
+    print(f"Max positions: {POSITION_SIZING['max_positions']}")
+    
+    # Get custom tickers and detect market regime
+    tickers = select_custom_tickers(market_data)
+    market_regime = detect_market_regime(market_data)
+    print(f"Market regime detected: {market_regime}")
+    print(f"Selected tickers: {tickers}")
+    
     available_funds = FUNDS
-    min_tickers = max(5, len(tickers))
     trades = []
+    
     for ticker in tickers:
         ticker_data = market_data.get(ticker, {})
-        trade_plan = decide_entry_exit(ticker_data, available_funds, min_tickers)
-        # Deduct invested amount from available funds for next trade
-        if trade_plan.get('invested'):
-            available_funds -= trade_plan['invested']
-        # Example: Place a real order (uncomment for live trading)
-        # api.place_order(ticker, trade_plan['shares'], 'buy', 'market')
-        print(f"Planned trade for {ticker}: {trade_plan}")
-        log_trade(ticker, trade_plan)
+        if ticker_data:
+            # Add ticker symbol to the data for position sizing
+            ticker_data['symbol'] = ticker
+            trade_plan = decide_entry_exit(ticker_data, available_funds, len(tickers))
+            
+            # Deduct invested amount from available funds for next trade
+            if trade_plan.get('invested'):
+                available_funds -= trade_plan['invested']
+            
+            # Example: Place a real order (uncomment for live trading)
+            # api.place_order(ticker, trade_plan['shares'], 'buy', 'market')
+            print(f"Planned trade for {ticker}: {trade_plan}")
+            log_trade(ticker, trade_plan)
+            trades.append(trade_plan)
         trades.append(trade_plan)
     risk_report(trades)
 

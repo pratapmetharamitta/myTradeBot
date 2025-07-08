@@ -2,6 +2,7 @@
 
 import numpy as np
 from datetime import datetime, timedelta
+from config import CUSTOM_TICKERS, POSITION_SIZING, CUSTOM_POSITION_SIZES, STRATEGY_CONFIG, FUNDS
 
 def detect_market_regime(market_data, lookback_days=20):
     """
@@ -226,17 +227,17 @@ def decide_entry_exit_adaptive(ticker_data, available_funds=25000, min_tickers=5
         exit_price = close
         exit_type = 'close'
     
-    # Check minimum profit requirement
+    # Check minimum profit requirement - RESTORE ORIGINAL WORKING LOGIC
     if exit_price > entry:
         profit_pct = (exit_price - entry) / entry
         if profit_pct < min_profit_pct:
             return {'entry': entry, 'exit': None, 'exit_type': 'skip_low_reward'}
     
-    # Calculate position size
+    # RESTORE ORIGINAL WORKING POSITION SIZING LOGIC
     allocation = available_funds / max(1, min_tickers)
     
     if exit_price > entry:
-        # Calculate aggressive position sizing
+        # Calculate aggressive position sizing - ORIGINAL LOGIC THAT WORKED
         profit_per_share = exit_price - entry
         
         # Target different profit levels based on market regime - ENHANCED FOR $150/DAY TARGET
@@ -278,6 +279,61 @@ def decide_entry_exit_adaptive(ticker_data, available_funds=25000, min_tickers=5
         'expected_profit': expected_profit,
         'market_regime': market_regime
     }
+
+def get_custom_tickers():
+    """
+    Get the custom ticker list from configuration
+    """
+    return CUSTOM_TICKERS
+
+def select_custom_tickers(market_data=None):
+    """
+    Select tickers from the custom configuration list
+    """
+    custom_tickers = get_custom_tickers()
+    
+    if market_data:
+        # Filter to only include tickers that have market data
+        available_tickers = [ticker for ticker in custom_tickers if ticker in market_data]
+        return available_tickers[:POSITION_SIZING['max_positions']]
+    else:
+        # Return all custom tickers up to max positions
+        return custom_tickers[:POSITION_SIZING['max_positions']]
+
+def calculate_position_size(ticker, price, available_funds, market_regime='normal'):
+    """
+    Calculate position size based on configuration method
+    """
+    method = POSITION_SIZING['method']
+    
+    if method == 'custom' and ticker in CUSTOM_POSITION_SIZES:
+        # Use custom position size for this ticker
+        target_value = CUSTOM_POSITION_SIZES[ticker]
+    elif method == 'equal':
+        # Equal position sizing
+        target_value = available_funds / POSITION_SIZING['max_positions']
+    else:
+        # Adaptive position sizing (default)
+        base_allocation = available_funds / POSITION_SIZING['max_positions']
+        
+        # Adjust based on market regime
+        if market_regime == 'high_volatility':
+            target_value = base_allocation * 0.8  # Reduce size in volatile markets
+        elif market_regime == 'low_volatility':
+            target_value = base_allocation * 1.2  # Increase size in stable markets
+        else:
+            target_value = base_allocation
+    
+    # Apply min/max constraints
+    target_value = max(target_value, POSITION_SIZING['min_position_value'])
+    target_value = min(target_value, POSITION_SIZING['max_position_value'])
+    target_value = min(target_value, available_funds)
+    
+    # Calculate number of shares
+    shares = int(target_value / price) if price > 0 else 0
+    actual_investment = shares * price
+    
+    return shares, actual_investment
 
 # Legacy function names for backward compatibility
 def select_tickers(market_data, allowed_sectors=None, min_per_sector=1):

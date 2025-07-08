@@ -1,6 +1,7 @@
 import pandas as pd
 import yfinance as yf
-from strategy import select_tickers_adaptive, decide_entry_exit_adaptive, detect_market_regime
+from strategy import select_custom_tickers, decide_entry_exit_adaptive, detect_market_regime
+from config import CUSTOM_TICKERS, FUNDS
 
 def download_data(tickers, start, end):
     data = {}
@@ -57,8 +58,9 @@ def run_backtest(tickers, start, end, initial_funds=25000):
             # Detect market regime for adaptive strategy
             market_regime = detect_market_regime(prev_day_data)
             
-            # Select tickers based on previous day's performance
-            tickers_today = select_tickers_adaptive(prev_day_data, allowed_sectors=None, min_per_sector=1, market_regime=market_regime)
+            # Use custom tickers from configuration
+            available_custom_tickers = [t for t in CUSTOM_TICKERS if t in prev_day_data]
+            tickers_today = available_custom_tickers[:12]  # Limit to max positions
             min_tickers = max(5, len(tickers_today))
             
             # DAY TRADING FIX: Use current total funds for each day (funds reset daily)
@@ -69,6 +71,7 @@ def run_backtest(tickers, start, end, initial_funds=25000):
                     # Use current day's opening price for entry
                     current_data = day_data[ticker].copy()
                     current_data['open'] = day_data[ticker]['open']  # Buy at today's open
+                    current_data['symbol'] = ticker  # Add ticker symbol for position sizing
                     
                     # Simulate realistic exit: can achieve high/low/close during the day
                     trade_plan = decide_entry_exit_adaptive(current_data, daily_funds, min_tickers, market_regime)
@@ -84,15 +87,14 @@ def run_backtest(tickers, start, end, initial_funds=25000):
     return pd.DataFrame(all_trades)
 
 if __name__ == "__main__":
-    # EXPANDED STOCK UNIVERSE FOR $150/DAY TARGET: More stocks = more opportunities
-    tickers = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOG', 'AMZN', 'META', 'NFLX', 'CRM', 'ADBE', 
-               'AMD', 'ORCL', 'PYPL', 'INTC', 'QCOM', 'TXN', 'AVGO', 'CSCO']  # Added 8 more tech stocks
+    # Use custom tickers from configuration
+    tickers = CUSTOM_TICKERS
     start = '2024-01-01'
     end = '2024-12-31'
     print(f"Running ENHANCED backtest for 1 year of data: {start} to {end}")
-    print(f"Testing {len(tickers)} stocks: {', '.join(tickers)}")
-    print("ENHANCEMENTS: Higher profit targets, more aggressive position sizing, expanded stock universe")
-    df = run_backtest(tickers, start, end)
+    print(f"Testing {len(tickers)} custom stocks: {', '.join(tickers)}")
+    print("Using CUSTOM CONFIGURATION: Custom tickers, adaptive position sizing, configurable strategy")
+    df = run_backtest(tickers, start, end, FUNDS)
     print(df.head())
     print(f"Total trades: {len(df)}")
     print(f"Total expected profit: {df['expected_profit'].sum():.2f}")
